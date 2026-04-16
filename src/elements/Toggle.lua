@@ -13,6 +13,7 @@ function Element:New(Config)
         Title = Config.Title or "Toggle",
         Desc = Config.Desc or nil,
         Locked = Config.Locked or false,
+        LockedTitle = Config.LockedTitle,
         Value = Config.Value,
         Icon = Config.Icon or nil,
         IconSize = Config.IconSize or 23, -- from 26 to 0
@@ -48,7 +49,7 @@ function Element:New(Config)
     function Toggle:Lock()
         Toggle.Locked = true
         CanCallback = false
-        return Toggle.ToggleFrame:Lock()
+        return Toggle.ToggleFrame:Lock(Toggle.LockedTitle)
     end
     function Toggle:Unlock()
         Toggle.Locked = false
@@ -86,21 +87,28 @@ function Element:New(Config)
 
 
     if Config.Window.NewElements and ToggleFunc.Animate then
-        Creator.AddSignal(Toggle.ToggleFrame.UIElements.Main.InputBegan, function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                ToggleFunc:Animate(input, Toggle)
-            end
-        end)
-    
+        if Toggle.Type == "Toggle" then
+            Creator.AddSignal(ToggleFrame.ToggleFrame.Hitbox.InputBegan, function(input)
+                if not Config.Window.IsToggleDragging and input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                    ToggleFunc:Animate(input, Toggle)
+                end
+            end)
+        end
         -- Creator.AddSignal(Toggle.ToggleFrame.UIElements.Main.InputEnded, function(input)
         --     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         --         ToggleFunc:Animate(input, true, Toggle)
         --     end
         -- end)
     else
-        Creator.AddSignal(Toggle.ToggleFrame.UIElements.Main.MouseButton1Click, function()
-            Toggle:Set(not Toggle.Value, nil, Config.Window.NewElements)
-        end)
+        if Toggle.Type == "Toggle" then
+            Creator.AddSignal(ToggleFrame.ToggleFrame.Hitbox.MouseButton1Click, function()
+                Toggle:Set(not Toggle.Value, nil, Config.Window.NewElements)
+            end)
+        elseif Toggle.Type == "Checkbox" then
+            Creator.AddSignal(ToggleFrame.MouseButton1Click, function()
+                Toggle:Set(not Toggle.Value, nil, Config.Window.NewElements)
+            end)
+        end
     end
     
     return Toggle.__type, Toggle

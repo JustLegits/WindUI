@@ -1,13 +1,17 @@
+local cloneref = (cloneref or clonereference or function(instance) return instance end)
+
+
+local UserInputService = cloneref(game:GetService("UserInputService"))
+local RunService = cloneref(game:GetService("RunService"))
+
 local Creator = require("../modules/Creator")
 local New = Creator.New
 local Tween = Creator.Tween
 
-local cloneref = (cloneref or clonereference or function(instance) return instance end)
-
 
 local Element = {}
 
-local HoldingSlider = false
+local IsSliderHolding = false
 
 function Element:New(Config)
     local Slider = {
@@ -15,14 +19,17 @@ function Element:New(Config)
         Title = Config.Title or nil,
         Desc = Config.Desc or nil,
         Locked = Config.Locked or nil,
+        LockedTitle = Config.LockedTitle,
         Value = Config.Value or {},
         Icons = Config.Icons or nil,
+        IsTooltip = Config.IsTooltip or false,
+        IsTextbox = Config.IsTextbox,
         Step = Config.Step or 1,
         Callback = Config.Callback or function() end,
         UIElements = {},
         IsFocusing = false,
         
-        Width = 130,
+        Width = Config.Width or 130,
         TextBoxWidth = Config.Window.NewElements and 40 or 30,
         ThumbSize = 13,
         IconSize = 26,
@@ -33,6 +40,7 @@ function Element:New(Config)
             To = "sfsymbols:sunMaxFill",
         }
     end
+    if Slider.IsTextbox == nil and Slider.Title == nil then Slider.IsTextbox = false else Slider.IsTextbox = Slider.IsTextbox ~= false end
     
     local isTouch
     local moveconnection
@@ -47,10 +55,9 @@ function Element:New(Config)
     
     local function FormatValue(val)
         if IsFloat then
-            return string.format("%.2f", val)
-        else
-            return tonumber(math.floor(val + 0.5))
+            return tonumber(string.format("%.2f", val))
         end
+        return math.floor(val + 0.5)
     end
     
     local function CalculateValue(rawValue)
@@ -62,7 +69,7 @@ function Element:New(Config)
     end
     
     local IconFrom, IconTo
-    local TotalSliderWidth = 0
+    local TotalSliderWidth = 32
     if Slider.Icons then
         if Slider.Icons.From then
             IconFrom = Creator.Image(
@@ -76,7 +83,7 @@ function Element:New(Config)
                 "SliderIconFrom"
             )
             IconFrom.Size = UDim2.new(0,Slider.IconSize,0,Slider.IconSize)
-            TotalSliderWidth = TotalSliderWidth + Slider.IconSize + 12
+            TotalSliderWidth = TotalSliderWidth + Slider.IconSize - 2
         end
         if Slider.Icons.To then
             IconTo = Creator.Image(
@@ -90,7 +97,7 @@ function Element:New(Config)
                 "SliderIconTo"
             )
             IconTo.Size = UDim2.new(0,Slider.IconSize,0,Slider.IconSize)
-            TotalSliderWidth = TotalSliderWidth + Slider.IconSize + 12
+            TotalSliderWidth = TotalSliderWidth + Slider.IconSize - 2
         end
     end
     Slider.SliderFrame = require("../components/window/Element")({
@@ -106,9 +113,10 @@ function Element:New(Config)
         ParentConfig = Config,
     })
     
+    
     Slider.UIElements.SliderIcon = Creator.NewRoundFrame(99, "Squircle", {
         ImageTransparency = .95,
-        Size = UDim2.new(1, Slider.Icons and -TotalSliderWidth or (-Slider.TextBoxWidth-8), 0, 4),
+        Size = UDim2.new(1, not Slider.IsTextbox and -TotalSliderWidth or (-Slider.TextBoxWidth-8), 0, 4),
         AnchorPoint = Vector2.new(0.5,0.5),
         Position = UDim2.new(0.5,0,0.5,0),
         Name = "Frame",
@@ -133,25 +141,25 @@ function Element:New(Config)
                 },
                 Name = "Thumb",
             }, {
-                Creator.NewRoundFrame(99, "SquircleOutline2", {
+                Creator.NewRoundFrame(99, "Glass-1", {
                     Size = UDim2.new(1,0,1,0),
                     ImageColor3 = Color3.new(1,1,1),
                     Name = "Highlight",
-                    ImageTransparency = .45,
+                    ImageTransparency = .6,
                 }, {
-                    New("UIGradient", {
-                        Rotation = 60,
-                        Color = ColorSequence.new({
-                            ColorSequenceKeypoint.new(0.0, Color3.fromRGB(255, 255, 255)),
-                            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 255, 255)),
-                            ColorSequenceKeypoint.new(1.0, Color3.fromRGB(255, 255, 255)),
-                        }),
-                        Transparency = NumberSequence.new({
-                            NumberSequenceKeypoint.new(0.0, 0.1),
-                            NumberSequenceKeypoint.new(0.5, 1),
-                            NumberSequenceKeypoint.new(1.0, 0.1),
-                        })
-                    }),
+                    -- New("UIGradient", {
+                    --     Rotation = 60,
+                    --     Color = ColorSequence.new({
+                    --         ColorSequenceKeypoint.new(0.0, Color3.fromRGB(255, 255, 255)),
+                    --         ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 255, 255)),
+                    --         ColorSequenceKeypoint.new(1.0, Color3.fromRGB(255, 255, 255)),
+                    --     }),
+                    --     Transparency = NumberSequence.new({
+                    --         NumberSequenceKeypoint.new(0.0, 0.1),
+                    --         NumberSequenceKeypoint.new(0.5, 1),
+                    --         NumberSequenceKeypoint.new(1.0, 0.1),
+                    --     })
+                    -- }),
                 }),
             })
         })
@@ -160,7 +168,7 @@ function Element:New(Config)
     Slider.UIElements.SliderContainer = New("Frame", {
         Size = UDim2.new(Slider.Title == nil and 1 or 0, Slider.Title == nil and 0 or Slider.Width, 0, 0),
         AutomaticSize = "Y",
-        Position = UDim2.new(1, Slider.Title ~= nil and (Config.Window.NewElements and -12-4 or 0) or 0, 0.5, 0),
+        Position = UDim2.new(1, Slider.IsTextbox and (Config.Window.NewElements and -12-4 or 0) or 0, 0.5, 0),
         AnchorPoint = Vector2.new(1,0.5),
         BackgroundTransparency = 1,
         Parent = Slider.SliderFrame.UIElements.Main,
@@ -169,6 +177,7 @@ function Element:New(Config)
             Padding = UDim.new(0, Slider.Title ~= nil and 8 or 12),
             FillDirection = "Horizontal",
             VerticalAlignment = "Center",
+            HorizontalAlignment = Slider.Icons and (Slider.Icons.From and ( Slider.Icons.To and "Center" or "Left") or Slider.Icons.To and "Right") or "Center",
         }),
         IconFrom,
         Slider.UIElements.SliderIcon,
@@ -186,14 +195,21 @@ function Element:New(Config)
             FontFace = Font.new(Creator.Font, Enum.FontWeight.Medium),
             BackgroundTransparency = 1,
             LayoutOrder = -1,
-            Visible = Slider.Title ~= nil,
+            Visible = Slider.IsTextbox,
         })
     })
-
+    
+    local Tooltip
+    if Slider.IsTooltip then
+        Tooltip = require("../components/ui/Tooltip").New(Value, Slider.UIElements.SliderIcon.Frame.Thumb, true, "Secondary", "Small", false)
+        Tooltip.Container.AnchorPoint = Vector2.new(0.5,1)
+        Tooltip.Container.Position = UDim2.new(0.5,0,0,-8)
+    end
+    
     function Slider:Lock()
         Slider.Locked = true
         CanCallback = false
-        return Slider.SliderFrame:Lock()
+        return Slider.SliderFrame:Lock(Slider.LockedTitle)
     end
     function Slider:Unlock()
         Slider.Locked = false
@@ -210,13 +226,13 @@ function Element:New(Config)
     
     function Slider:Set(Value, input)
         if CanCallback then
-            if not Slider.IsFocusing and not HoldingSlider and (not input or (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch)) then
+            if not Slider.IsFocusing and not IsSliderHolding and (not input or (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch)) then
                 if input then
                     isTouch = (input.UserInputType == Enum.UserInputType.Touch)
                     ScrollingFrameParent.ScrollingEnabled = false
-                    HoldingSlider = true
+                    IsSliderHolding = true
                     
-                    local inputPosition = isTouch and input.Position.X or cloneref(game:GetService("UserInputService")):GetMouseLocation().X
+                    local inputPosition = isTouch and input.Position.X or UserInputService:GetMouseLocation().X
                     local delta = math.clamp((inputPosition - Slider.UIElements.SliderIcon.AbsolutePosition.X) / Slider.UIElements.SliderIcon.AbsoluteSize.X, 0, 1)
                     Value = CalculateValue(Slider.Value.Min + delta * (Slider.Value.Max - Slider.Value.Min))
                     Value = math.clamp(Value, Slider.Value.Min or 0, Slider.Value.Max or 100)
@@ -224,19 +240,21 @@ function Element:New(Config)
                     if Value ~= LastValue then
                         Tween(Slider.UIElements.SliderIcon.Frame, 0.05, {Size = UDim2.new(delta,0,1,0)}):Play()
                         Slider.UIElements.SliderContainer.TextBox.Text = FormatValue(Value)
+                        if Tooltip then Tooltip.TitleFrame.Text = FormatValue(Value) end
                         Slider.Value.Default = FormatValue(Value)
                         LastValue = Value
                         Creator.SafeCallback(Slider.Callback, FormatValue(Value))
                     end
                     
-                    moveconnection = cloneref(game:GetService("RunService")).RenderStepped:Connect(function()
-                        local inputPosition = isTouch and input.Position.X or cloneref(game:GetService("UserInputService")):GetMouseLocation().X
+                    moveconnection = RunService.RenderStepped:Connect(function()
+                        local inputPosition = isTouch and input.Position.X or UserInputService:GetMouseLocation().X
                         local delta = math.clamp((inputPosition - Slider.UIElements.SliderIcon.AbsolutePosition.X) / Slider.UIElements.SliderIcon.AbsoluteSize.X, 0, 1)
                         Value = CalculateValue(Slider.Value.Min + delta * (Slider.Value.Max - Slider.Value.Min))
                         
                         if Value ~= LastValue then
                             Tween(Slider.UIElements.SliderIcon.Frame, 0.05, {Size = UDim2.new(delta,0,1,0)}):Play()
                             Slider.UIElements.SliderContainer.TextBox.Text = FormatValue(Value)
+                            if Tooltip then Tooltip.TitleFrame.Text = FormatValue(Value) end
                             Slider.Value.Default = FormatValue(Value)
                             LastValue = Value
                             Creator.SafeCallback(Slider.Callback, FormatValue(Value))
@@ -244,16 +262,17 @@ function Element:New(Config)
                     end)
                     
                     -- release slider
-                    releaseconnection = cloneref(game:GetService("UserInputService")).InputEnded:Connect(function(endInput)
+                    releaseconnection = UserInputService.InputEnded:Connect(function(endInput)
                         if (endInput.UserInputType == Enum.UserInputType.MouseButton1 or endInput.UserInputType == Enum.UserInputType.Touch) and input == endInput then
                             moveconnection:Disconnect()
                             releaseconnection:Disconnect()
-                            HoldingSlider = false
+                            IsSliderHolding = false
                             ScrollingFrameParent.ScrollingEnabled = true
                             
                             if Config.Window.NewElements then
                                 Tween(Slider.UIElements.SliderIcon.Frame.Thumb, .2, { ImageTransparency = 0, Size = UDim2.new(0,Config.Window.NewElements and (Slider.ThumbSize*2) or (Slider.ThumbSize+2),0,Config.Window.NewElements and (Slider.ThumbSize+4) or (Slider.ThumbSize+2)) }, Enum.EasingStyle.Quint, Enum.EasingDirection.InOut):Play()
                             end
+                            if Tooltip then Tooltip:Close(false) end
                         end
                     end)
                 else
@@ -265,6 +284,7 @@ function Element:New(Config)
                     if Value ~= LastValue then
                         Tween(Slider.UIElements.SliderIcon.Frame, 0.05, {Size = UDim2.new(delta,0,1,0)}):Play()
                         Slider.UIElements.SliderContainer.TextBox.Text = FormatValue(Value)
+                        if Tooltip then Tooltip.TitleFrame.Text = FormatValue(Value) end
                         Slider.Value.Default = FormatValue(Value)
                         LastValue = Value
                         Creator.SafeCallback(Slider.Callback, FormatValue(Value))
@@ -305,11 +325,16 @@ function Element:New(Config)
                 Slider:Set(newValue)
             else
                 Slider.UIElements.SliderContainer.TextBox.Text = FormatValue(LastValue)
+                if Tooltip then Tooltip.TitleFrame.Text = FormatValue(LastValue) end
             end
         end
     end)
     
     Creator.AddSignal(Slider.UIElements.SliderContainer.InputBegan, function(input)
+        if Slider.Locked or IsSliderHolding then
+            return
+        end
+        
         Slider:Set(Value, input)
         
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -317,6 +342,8 @@ function Element:New(Config)
             if Config.Window.NewElements then 
                 Tween(Slider.UIElements.SliderIcon.Frame.Thumb, .24, { ImageTransparency = .85, Size = UDim2.new(0,(Config.Window.NewElements and (Slider.ThumbSize*2) or (Slider.ThumbSize))+8,0,Slider.ThumbSize+8) }, Enum.EasingStyle.Quint, Enum.EasingDirection.Out):Play()
             end
+            if Tooltip then Tooltip:Open() end
+            --print("piskaa")
         end
     end)
     

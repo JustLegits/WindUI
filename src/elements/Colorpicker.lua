@@ -21,12 +21,12 @@ local Element = {
     --UIPadding = 8
 }
 
-function Element:Colorpicker(Config, Window, OnApply)
+function Element:Colorpicker(Config, Window, WindUI, OnApply)
     local Colorpicker = {
         __type = "Colorpicker",
         Title = Config.Title,
         Desc = Config.Desc,
-        Default = Config.Default,
+        Default = Config.Value or Config.Default,
         Callback = Config.Callback,
         Transparency = Config.Transparency,
         UIElements = Config.UIElements,
@@ -43,8 +43,8 @@ function Element:Colorpicker(Config, Window, OnApply)
 
 	Colorpicker:SetHSVFromRGB(Colorpicker.Default)
     
-    local ColorpickerModule = require("../components/window/Dialog").Init(Window)
-    local ColorpickerFrame = ColorpickerModule.Create()
+    local ColorpickerModule = require("../components/window/Dialog")
+    local ColorpickerFrame = ColorpickerModule.Create(nil, "Dialog", Window, WindUI, Window.UIElements.Main.Main)
     
     Colorpicker.ColorpickerFrame = ColorpickerFrame
     
@@ -635,6 +635,7 @@ function Element:New(Config)
         Title = Config.Title or "Colorpicker",
         Desc = Config.Desc or nil,
         Locked = Config.Locked or false,
+        LockedTitle = Config.LockedTitle,
         Default = Config.Default or Color3.new(1,1,1),
         Callback = Config.Callback or function() end,
         --Window = Config.Window,
@@ -675,7 +676,7 @@ function Element:New(Config)
     function Colorpicker:Lock()
         Colorpicker.Locked = true
         CanCallback = false
-        return Colorpicker.ColorpickerFrame:Lock()
+        return Colorpicker.ColorpickerFrame:Lock(Colorpicker.LockedTitle)
     end
     function Colorpicker:Unlock()
         Colorpicker.Locked = false
@@ -703,7 +704,7 @@ function Element:New(Config)
     
     Creator.AddSignal(Colorpicker.UIElements.Colorpicker.MouseButton1Click, function()
         if CanCallback then
-            Element:Colorpicker(Colorpicker, Config.Window, function(color, transparency)
+            Element:Colorpicker(Colorpicker, Config.Window, Config.WindUI, function(color, transparency)
                 Colorpicker:Update(color, transparency)
                 Colorpicker.Default = color
                 Colorpicker.Transparency = transparency
